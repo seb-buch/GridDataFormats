@@ -66,7 +66,7 @@ histograms in a portable and universal manner:
 >>> histogram,edges = dx.histogramdd()
 
 """
-from __future__ import with_statement
+
 
 import numpy
 import re
@@ -158,7 +158,7 @@ class gridpositions(DXclass):
         Only works for regular, orthonormal grids.
         """
         return [self.delta[d,d] * numpy.arange(self.shape[d]+1) + self.origin[d]\
-                - 0.5*self.delta[d,d]     for d in xrange(self.rank)]
+                - 0.5*self.delta[d,d]     for d in range(self.rank)]
 
 
 class gridconnections(DXclass):
@@ -191,10 +191,10 @@ class array(DXclass):
         # (flat iterator is equivalent to: for x: for y: for z: grid[x,y,z])
         # VMD's DX reader requires exactly 3 values per line 
         values_per_line = 3
-        anext = self.array.flat.next
+        anext = self.array.flat.__next__
         while 1:
             try:
-                for i in xrange(values_per_line):
+                for i in range(values_per_line):
                     file.write(str(anext())+"\t")  # I hope this is written even if the try fails..
                 file.write('\n')
             except StopIteration:
@@ -308,7 +308,7 @@ class field(DXclass):
     def sorted_components(self):
         """iterator that returns (component,object) in id order"""
         for component,object in \
-                sorted(self.components.items(),key=lambda (c,o):o.id):
+                sorted(list(self.components.items()),key=lambda c_o:c_o[1].id):
             yield component,object
 
     def histogramdd(self):
@@ -692,7 +692,7 @@ class DXParser(object):
             if not self.currentobject['size']:
                 raise DXParseError("array: missing number of items")
             self.currentobject['array'] = [self.__consume().value('REAL') \
-                                           for i in xrange(self.currentobject['size'])]
+                                           for i in range(self.currentobject['size'])]
         elif tok.equals('attribute'):
             # not used at the moment
             attribute = self.__consume().value()

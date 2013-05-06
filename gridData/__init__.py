@@ -201,4 +201,4 @@ class gridDataWarning(Warning):
     """Warns of a problem specific to the gridData module."""
     pass
 
-from core import Grid
+from .core import Grid

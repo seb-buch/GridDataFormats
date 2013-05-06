@@ -147,7 +147,7 @@ For an example of what a formatted *.plt file can look like please look
 above. If you are a programmer please look at the included utility programs for
 the code for doing the reading and writing of *.plt files
 """
-from __future__ import with_statement
+
 
 import warnings
 import struct
@@ -216,7 +216,7 @@ class Plt(object):
         self.filename = filename
         # fix header_struct because I cannot do {...}.update()
         rec_surf = [r for r in self._header_struct if r.key == 'surface'][0]
-        rec_surf.values.update(dict((k,'user-defined') for k in xrange(4,51) if k != 42))
+        rec_surf.values.update(dict((k,'user-defined') for k in range(4,51) if k != 42))
         # assemble format
         self._headerfmt = "".join([r.bintype for r in self._header_struct])
 
@@ -251,7 +251,7 @@ class Plt(object):
         Only works for regular, orthonormal grids.
         """
         return [self.delta[d,d] * numpy.arange(self.shape[d]+1) + self.origin[d]\
-                - 0.5*self.delta[d,d]     for d in xrange(self.rank)]
+                - 0.5*self.delta[d,d]     for d in range(self.rank)]
 
     def _delta(self):
         h = self.header
@@ -266,7 +266,7 @@ class Plt(object):
         names = [r.key for r in self._header_struct]
         binheader = pltfile.read(nheader)
         def decode_header(bsaflag='@'):
-            h = dict(zip(names, struct.unpack(bsaflag+self._headerfmt, binheader)))
+            h = dict(list(zip(names, struct.unpack(bsaflag+self._headerfmt, binheader))))
             h['bsaflag'] = bsaflag
             return h
         for flag in '@=<>':

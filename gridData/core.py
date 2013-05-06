@@ -22,9 +22,9 @@ Some formats can also be read::
 
 import os
 import warnings
-import cPickle
+import pickle
 import numpy
-import OpenDX, gOpenMol
+from . import OpenDX, gOpenMol
 
 from gridData import gridDataWarning
 
@@ -175,11 +175,11 @@ class Grid(object):
 
     def resample_factor(self, factor):
         """Resample to a new regular grid with factor*oldN cells along each dimension."""
-        from itertools import izip
+        
         # new number of edges N' = (N-1)*f + 1
         newlengths = [(N-1)*float(factor) + 1 for N in self._len_edges()]
         edges = [numpy.linspace(start,stop,num=N,endpoint=True) for (start,stop,N) in 
-                 izip(self._min_edges(), self._max_edges(), newlengths)]
+                 zip(self._min_edges(), self._max_edges(), newlengths)]
         return self.resample(edges)
 
     def _edgify(self, midpoints):
@@ -204,9 +204,9 @@ class Grid(object):
               coordinate
         """
         self.delta = numpy.diag(
-            map(lambda e: (e[-1] - e[0])/(len(e)-1), self.edges) )
+            [(e[-1] - e[0])/(len(e)-1) for e in self.edges] )
         self.midpoints = self._midpoints(self.edges)
-        self.origin = numpy.array(map(lambda m: m[0], self.midpoints))
+        self.origin = numpy.array([m[0] for m in self.midpoints])
         if not self.__interpolated is None:
             # only update if we are using it
             self.__interpolated = self._interpolationFunctionFactory()
@@ -264,7 +264,7 @@ class Grid(object):
             format = self.default_format
         if not format in available:
             raise ValueError("File format %r not available, choose one of %r"\
-                                 % (format, available.keys()))
+                                 % (format, list(available.keys())))
         return format
 
     def _get_exporter(self, filename, format=None):
@@ -288,7 +288,7 @@ class Grid(object):
     def _load_python(self,filename):
         f = open(filename,'rb')
         try:
-            saved = cPickle.load(f)
+            saved = pickle.load(f)
         finally:
             f.close()
         self.__init__(grid=saved['grid'],edges=saved['edges'],metadata=saved['metadata'])
@@ -340,7 +340,7 @@ class Grid(object):
         data = dict(grid=self.grid,edges=self.edges,metadata=self.metadata)
         f = open(filename,'wb')
         try:
-            cPickle.dump(data,f,cPickle.HIGHEST_PROTOCOL)
+            pickle.dump(data,f,pickle.HIGHEST_PROTOCOL)
         finally:
             f.close()
         del data
@@ -464,7 +464,7 @@ class Grid(object):
               >>> FF = _interpolationFunction(XX,YY,ZZ)            
             """
             _coordinates = numpy.array(
-                [_transform(coordinates[i], x0[i], dx[i]) for i in xrange(len(coordinates))])
+                [_transform(coordinates[i], x0[i], dx[i]) for i in range(len(coordinates))])
             return ndimage.map_coordinates(coeffs, _coordinates, prefilter=False, 
                                            mode='nearest',cval=cval)
         # mode='wrap' would be ideal but is broken: http://projects.scipy.org/scipy/ticket/796
@@ -596,7 +596,7 @@ def ndmeshgrid(*arrs):
     """
     #arrs = tuple(reversed(arrs)) <-- wrong on stackoverflow.com
     arrs = tuple(arrs)
-    lens = map(len, arrs)
+    lens = list(map(len, arrs))
     dim = len(arrs)
 
     sz = 1
