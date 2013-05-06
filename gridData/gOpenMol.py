@@ -148,24 +148,28 @@ above. If you are a programmer please look at the included utility programs for
 the code for doing the reading and writing of *.plt files
 """
 
-
 import warnings
 import struct
 import numpy
+
 
 class Record(object):
     def __init__(self, key, bintype, values=None):
         self.key = key
         self.bintype = bintype
         self.values = values  # dict(value='comment', ...)
+
     def is_legal(self, value):
         if self.values is None:
             return True
         return value in self.values
+
     def is_legal_dict(self, d):
         return self.is_legal(d[self.key])
+
     def __repr__(self):
         return "Record(%(key)r,%(bintype)r,...)" % vars(self)
+
 
 class Plt(object):
     """A class to reprensent a gOpenMol_ plt file.
@@ -188,8 +192,8 @@ class Plt(object):
 
     """
 
-    _header_struct =  (Record('rank',   'I', {3:'dimension'}),
-                       Record('surface','I', {1: 'VSS surface',
+    _header_struct = (Record('rank', 'I', {3: 'dimension'}),
+                      Record('surface', 'I', {1: 'VSS surface',
                                               2: 'Orbital/density surface',
                                               3: 'Probe surface',
                                               42: 'gridcount',
@@ -200,23 +204,23 @@ class Plt(object):
                                               203: 'AutoDock',
                                               204: 'Delphi/Insight',
                                               205: 'Grid',
-                                              }),     # update in init with all user defined values
-                       Record('nz',     'I'),
-                       Record('ny',     'I'),
-                       Record('nx',     'I'),
-                       Record('zmin',   'f'),
-                       Record('zmax',   'f'),
-                       Record('ymin',   'f'),
-                       Record('ymax',   'f'),
-                       Record('xmin',   'f'),
-                       Record('xmax',   'f'))
+                      }), # update in init with all user defined values
+                      Record('nz', 'I'),
+                      Record('ny', 'I'),
+                      Record('nx', 'I'),
+                      Record('zmin', 'f'),
+                      Record('zmax', 'f'),
+                      Record('ymin', 'f'),
+                      Record('ymax', 'f'),
+                      Record('xmin', 'f'),
+                      Record('xmax', 'f'))
     _data_bintype = 'f'   #  write(&value,sizeof(float),1L,output);
 
     def __init__(self, filename=None):
         self.filename = filename
         # fix header_struct because I cannot do {...}.update()
         rec_surf = [r for r in self._header_struct if r.key == 'surface'][0]
-        rec_surf.values.update(dict((k,'user-defined') for k in range(4,51) if k != 42))
+        rec_surf.values.update(dict((k, 'user-defined') for k in range(4, 51) if k != 42))
         # assemble format
         self._headerfmt = "".join([r.bintype for r in self._header_struct])
 
@@ -226,18 +230,19 @@ class Plt(object):
     def read(self, filename):
         """Populate the instance from the plt file *filename*."""
         from struct import calcsize, unpack
+
         if not filename is None:
             self.filename = filename
         with open(self.filename, 'rb') as plt:
             h = self.header = self._read_header(plt)
             nentries = h['nx'] * h['ny'] * h['nz']
             # quick and dirty... slurp it all in one go
-            datafmt = h['bsaflag']+str(nentries)+self._data_bintype
+            datafmt = h['bsaflag'] + str(nentries) + self._data_bintype
             a = numpy.array(unpack(datafmt, plt.read(calcsize(datafmt))))
         self.header['filename'] = self.filename
         self.array = a.reshape(h['nz'], h['ny'], h['nx']).transpose()  # unpack plt in reverse!!
         self.delta = self._delta()
-        self.origin = numpy.array([h['xmin'], h['ymin'], h['zmin']]) + 0.5*numpy.diagonal(self.delta)
+        self.origin = numpy.array([h['xmin'], h['ymin'], h['zmin']]) + 0.5 * numpy.diagonal(self.delta)
         self.rank = h['rank']
 
     @property
@@ -250,25 +255,27 @@ class Plt(object):
 
         Only works for regular, orthonormal grids.
         """
-        return [self.delta[d,d] * numpy.arange(self.shape[d]+1) + self.origin[d]\
-                - 0.5*self.delta[d,d]     for d in range(self.rank)]
+        return [self.delta[d, d] * numpy.arange(self.shape[d] + 1) + self.origin[d] \
+                - 0.5 * self.delta[d, d] for d in range(self.rank)]
 
     def _delta(self):
         h = self.header
-        qmin = numpy.array([h['xmin'],h['ymin'],h['zmin']])
-        qmax = numpy.array([h['xmax'],h['ymax'],h['zmax']])
+        qmin = numpy.array([h['xmin'], h['ymin'], h['zmin']])
+        qmax = numpy.array([h['xmax'], h['ymax'], h['zmax']])
         delta = numpy.abs(qmax - qmin) / self.shape
-        return numpy.diag(delta)    
+        return numpy.diag(delta)
 
     def _read_header(self, pltfile):
         """Read header bytes, try all possibilities for byte order/size/alignment"""
         nheader = struct.calcsize(self._headerfmt)
         names = [r.key for r in self._header_struct]
         binheader = pltfile.read(nheader)
+
         def decode_header(bsaflag='@'):
-            h = dict(list(zip(names, struct.unpack(bsaflag+self._headerfmt, binheader))))
+            h = dict(list(zip(names, struct.unpack(bsaflag + self._headerfmt, binheader))))
             h['bsaflag'] = bsaflag
             return h
+
         for flag in '@=<>':
             # try all endinaness and alignment options until we find something that looks sensible
             header = decode_header(flag)

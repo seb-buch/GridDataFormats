@@ -193,12 +193,14 @@ or even simpler ::
    abruptly.
 """
 
-__all__ =  ['Grid', 'OpenDX','gOpenMol']
+__all__ = ['Grid', 'OpenDX', 'gOpenMol']
 
 import warnings
+
 
 class gridDataWarning(Warning):
     """Warns of a problem specific to the gridData module."""
     pass
+
 
 from .core import Grid

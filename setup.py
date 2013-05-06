@@ -4,6 +4,7 @@
 # See the file COPYING for details.
 
 from ez_setup import use_setuptools
+
 use_setuptools()
 from setuptools import setup, find_packages
 
@@ -80,18 +81,18 @@ setup(name="GridDataFormats",
       license="GPLv3",
       url="https://github.com/orbeckst/GridDataFormats",
       keywords="science array density",
-      classifiers = ['Development Status :: 4 - Beta', 
-                     'Environment :: Console',
-                     'Intended Audience :: Science/Research',
-                     'License :: OSI Approved :: GNU General Public License (GPL)',
-                     'Programming Language :: Python',
-                     'Topic :: Scientific/Engineering',
-                     'Topic :: Software Development :: Libraries :: Python Modules',
-                     ],
+      classifiers=['Development Status :: 4 - Beta',
+                   'Environment :: Console',
+                   'Intended Audience :: Science/Research',
+                   'License :: OSI Approved :: GNU General Public License (GPL)',
+                   'Programming Language :: Python',
+                   'Topic :: Scientific/Engineering',
+                   'Topic :: Software Development :: Libraries :: Python Modules',
+      ],
       packages=find_packages(exclude=[]),
-      package_data = {},
+      package_data={},
       install_requires=['numpy>=1.0.3',
-                        'scipy',          # for remapping/interpolation
-                        ], 
+                        'scipy', # for remapping/interpolation
+      ],
       zip_safe=True,
 )

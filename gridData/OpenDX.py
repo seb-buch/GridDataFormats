@@ -67,7 +67,6 @@ histograms in a portable and universal manner:
 
 """
 
-
 import numpy
 import re
 
@@ -89,42 +88,45 @@ except NameError:
             L.sort(*args)
         else:
             # decorate-sort-undecorate
-            deco = [(key(x),i,x) for i,x in enumerate(L)]
+            deco = [(key(x), i, x) for i, x in enumerate(L)]
             deco.sort(*args)
-            L[:] = [y[2] for y in deco] 
+            L[:] = [y[2] for y in deco]
         if reverse:
             L.reverse()
         return L
-    
+
+
 class DXclass(object):
     """'class' object as defined by OpenDX"""
-    def __init__(self,classid):
+
+    def __init__(self, classid):
         """id is the object number"""
         self.id = classid  # serial number of the object
         self.name = None   # name of the DXclass
         self.component = None   # component type
         self.D = None      # dimensions
-    def write(self,file,optstring="",quote=False):
+
+    def write(self, file, optstring="", quote=False):
         """write the 'object' line; additional args are packed in string"""
         classid = str(self.id)
-        if quote: classid = '"'+classid+'"'
+        if quote: classid = '"' + classid + '"'
         # Only use a *single* space between tokens; both chimera's and pymol's DX parser
         # does not properly implement the OpenDX specs and produces garbage with multiple
         # spaces. (Chimera 1.4.1, PyMOL 1.3)
-        file.write('object '+classid+' class '+str(self.name)+' '+\
-                   optstring+'\n')
-        
-    def read(self,file):
+        file.write('object ' + classid + ' class ' + str(self.name) + ' ' + \
+                   optstring + '\n')
+
+    def read(self, file):
         raise NotImplementedError('Reading is currently not supported.')
 
-    def ndformat(self,s):
+    def ndformat(self, s):
         """Returns a string with as many repetitions of s as self
         has dimensions (derived from shape)"""
         return s * len(self.shape)
 
     def __repr__(self):
-        return '<OpenDX.'+str(self.name)+' object, id='+str(self.id)+'>'
-    
+        return '<OpenDX.' + str(self.name) + ' object, id=' + str(self.id) + '>'
+
 
 class gridpositions(DXclass):
     """OpenDX gridpositions class.
@@ -133,7 +135,8 @@ class gridpositions(DXclass):
     origin    coordinates of the centre of the grid cell with index 0,0,...,0
     delta     DxD array describing the deltas
     """
-    def __init__(self,classid,shape=None,origin=None,delta=None,**kwargs):
+
+    def __init__(self, classid, shape=None, origin=None, delta=None, **kwargs):
         if shape is None or origin is None or delta is None:
             raise ValueError('all keyword arguments are required')
         self.id = classid
@@ -143,48 +146,55 @@ class gridpositions(DXclass):
         self.origin = numpy.asarray(origin)    # D vector
         self.delta = numpy.asarray(delta)      # DxD array of grid spacings
         self.rank = len(self.shape)            # D === rank
-        if self.delta.shape != (self.rank,self.rank):
+        if self.delta.shape != (self.rank, self.rank):
             # check OpenDX specs for irreg spacing
             raise NotImplementedError('Only regularly spaced grids allowed.')
-    def write(self,file):
-        DXclass.write(self,file,
-                      ('counts '+self.ndformat(' %d')) % tuple(self.shape))
+
+    def write(self, file):
+        DXclass.write(self, file,
+                      ('counts ' + self.ndformat(' %d')) % tuple(self.shape))
         file.write('origin %f %f %f\n' % tuple(self.origin))
         for delta in self.delta:
-            file.write(('delta '+self.ndformat(' %f')+'\n') % tuple(delta))
+            file.write(('delta ' + self.ndformat(' %f') + '\n') % tuple(delta))
+
     def edges(self):
         """Edges of the grid cells, origin at centre of 0,0,..,0 grid cell.
 
         Only works for regular, orthonormal grids.
         """
-        return [self.delta[d,d] * numpy.arange(self.shape[d]+1) + self.origin[d]\
-                - 0.5*self.delta[d,d]     for d in range(self.rank)]
+        return [self.delta[d, d] * numpy.arange(self.shape[d] + 1) + self.origin[d] \
+                - 0.5 * self.delta[d, d] for d in range(self.rank)]
 
 
 class gridconnections(DXclass):
     """OpenDX gridconnections class"""
-    def __init__(self,classid,shape=None,**kwargs):
+
+    def __init__(self, classid, shape=None, **kwargs):
         if shape is None:
             raise ValueError('all keyword arguments are required')
         self.id = classid
         self.name = 'gridconnections'
         self.component = 'connections'
         self.shape = numpy.asarray(shape)      # D dimensional shape
-    def write(self,file):
-        DXclass.write(self,file,
-                      ('counts '+self.ndformat(' %d')) % tuple(self.shape))
+
+    def write(self, file):
+        DXclass.write(self, file,
+                      ('counts ' + self.ndformat(' %d')) % tuple(self.shape))
+
 
 class array(DXclass):
     """OpenDX array class"""
-    def __init__(self,classid,array=None,**kwargs):
+
+    def __init__(self, classid, array=None, **kwargs):
         if array is None:
             raise ValueError('array keyword argument is required')
         self.id = classid
         self.name = 'array'
         self.component = 'data'
         self.array = numpy.asarray(array)
-    def write(self,file):
-        DXclass.write(self,file,
+
+    def write(self, file):
+        DXclass.write(self, file,
                       'type float rank 0 items %d data follows' % \
                       self.array.size)
         # grid data, serialized as a C array (z fastest varying)
@@ -195,12 +205,13 @@ class array(DXclass):
         while 1:
             try:
                 for i in range(values_per_line):
-                    file.write(str(anext())+"\t")  # I hope this is written even if the try fails..
+                    file.write(str(anext()) + "\t")  # I hope this is written even if the try fails..
                 file.write('\n')
             except StopIteration:
                 file.write('\n')
                 break
         file.write('attribute "dep" string "positions"\n')
+
 
 class field(DXclass):
     """OpenDX container class
@@ -216,7 +227,7 @@ class field(DXclass):
     """
     # perhaps this should not derive from DXclass as those are
     # objects in field but a field cannot contain itself
-    def __init__(self,classid='0',components=None,comments=None):
+    def __init__(self, classid='0', components=None, comments=None):
         """OpenDX object, which is build from a list of components.
 
         dx = OpenDX.field('density',[gridpoints,gridconnections,array])
@@ -252,7 +263,7 @@ class field(DXclass):
         NOTE: uniqueness of the id is not checked.
         """
         if components is None:
-            components = dict(positions=None,connections=None,data=None)
+            components = dict(positions=None, connections=None, data=None)
         if comments is None:
             comments = ['OpenDX written by gridData.OpenDX',
                         'from http://github.com/orbeckst/GridDataFormats']
@@ -262,9 +273,9 @@ class field(DXclass):
         self.name = 'field'
         self.component = None   # cannot be a component of a field
         self.components = components
-        self.comments= comments
+        self.comments = comments
 
-    def write(self,filename):
+    def write(self, filename):
         """Write the complete dx object to the file.
 
         write(filename)
@@ -276,19 +287,19 @@ class field(DXclass):
         """
         # comments (VMD chokes on lines of len > 80, so truncate)
         maxcol = 80
-        with open(filename,'w') as outfile:
+        with open(filename, 'w') as outfile:
             for line in self.comments:
-                comment = '# '+str(line)
-                outfile.write(comment[:maxcol]+'\n')
-            # each individual object
-            for component,object in self.sorted_components():
+                comment = '# ' + str(line)
+                outfile.write(comment[:maxcol] + '\n')
+                # each individual object
+            for component, object in self.sorted_components():
                 object.write(outfile)
-            # the field object itself
-            DXclass.write(self,outfile,quote=True)
-            for component,object in self.sorted_components():
-                outfile.write('component "%s" value %s\n' % (component,str(object.id)))
+                # the field object itself
+            DXclass.write(self, outfile, quote=True)
+            for component, object in self.sorted_components():
+                outfile.write('component "%s" value %s\n' % (component, str(object.id)))
 
-    def read(self,file):
+    def read(self, file):
         """Read DX field from file.
 
         dx = OpenDX.field.read(dxfile)
@@ -299,35 +310,35 @@ class field(DXclass):
         p = DXParser(file)
         p.parse(DXfield)
 
-    def add(self,component,DXobj):
+    def add(self, component, DXobj):
         self[component] = DXobj
 
-    def add_comment(self,comment):
+    def add_comment(self, comment):
         self.comments.append(comment)
 
     def sorted_components(self):
         """iterator that returns (component,object) in id order"""
-        for component,object in \
-                sorted(list(self.components.items()),key=lambda c_o:c_o[1].id):
-            yield component,object
+        for component, object in \
+            sorted(list(self.components.items()), key=lambda c_o: c_o[1].id):
+            yield component, object
 
     def histogramdd(self):
         """Return array data as (edges,grid), i.e. a numpy nD histogram."""
         shape = self.components['positions'].shape
         edges = self.components['positions'].edges()
         hist = self.components['data'].array.reshape(shape)
-        return (hist,edges)
+        return (hist, edges)
 
-    def __getitem__(self,key):
+    def __getitem__(self, key):
         return self.components[key]
 
-    def __setitem__(self,key,value):
+    def __setitem__(self, key, value):
         self.components[key] = value
 
     def __repr__(self):
-        return '<OpenDX.field object, id='+str(self.id)+', with '+\
-               str(len(self.components))+' components and '+\
-               str(len(self.components))+' objects>'
+        return '<OpenDX.field object, id=' + str(self.id) + ', with ' + \
+               str(len(self.components)) + ' components and ' + \
+               str(len(self.components)) + ' objects>'
 
 
 #------------------------------------------------------------
@@ -337,40 +348,48 @@ class field(DXclass):
 class DXParseError(Exception):
     """general exception for parsing errors in DX files"""
     pass
+
+
 class DXParserNoTokens(DXParseError):
     """raised when the token buffer is exhausted"""
     pass
+
 
 class Token:
     # token categories (values of dx_regex must match up with these categories)
     category = {'COMMENT': ['COMMENT'],
                 'WORD': ['WORD'],
-                'STRING': ['QUOTEDSTRING','BARESTRING','STRING'],
+                'STRING': ['QUOTEDSTRING', 'BARESTRING', 'STRING'],
                 'WHITESPACE': ['WHITESPACE'],
                 'INTEGER': ['INTEGER'],
                 'REAL': ['REAL'],
-                'NUMBER': ['INTEGER','REAL']}
+                'NUMBER': ['INTEGER', 'REAL']}
     # cast functions
-    cast = {'COMMENT': lambda s:re.sub(r'#\s*','',s),
+    cast = {'COMMENT': lambda s: re.sub(r'#\s*', '', s),
             'WORD': str,
             'STRING': str, 'QUOTEDSTRING': str, 'BARESTRING': str,
             'WHITESPACE': None,
             'NUMBER': float, 'INTEGER': int, 'REAL': float}
 
-    def __init__(self,code,text):
+    def __init__(self, code, text):
         self.code = code    # store raw code
         self.text = text
-    def equals(self,v):
+
+    def equals(self, v):
         return self.text == v
-    def iscode(self,code):
+
+    def iscode(self, code):
         return self.code in self.category[code]  # use many -> 1 mappings
-    def value(self,ascode=None):
+
+    def value(self, ascode=None):
         """Return text cast to the correct type or the selected type"""
         if ascode is None:
             ascode = self.code
         return self.cast[ascode](self.text)
+
     def __repr__(self):
-        return '<token '+str(self.code)+','+str(self.value())+'>'
+        return '<token ' + str(self.code) + ',' + str(self.value()) + '>'
+
 
 class DXInitObject(object):
     """Storage class that holds data to initialize one of the 'real'
@@ -379,27 +398,32 @@ class DXInitObject(object):
     All variables are stored in args which will be turned into the
     arguments for the DX class.
     """
-    DXclasses = {'gridpositions':gridpositions,
-                 'gridconnections':gridconnections,
-                 'array':array, 'field':field,
-                 }
+    DXclasses = {'gridpositions': gridpositions,
+                 'gridconnections': gridconnections,
+                 'array': array, 'field': field,
+    }
 
-    def __init__(self,classtype,classid):
+    def __init__(self, classtype, classid):
         self.type = classtype
         self.id = classid
         self.args = dict()
+
     def initialize(self):
         """Initialize the corresponding DXclass from the data.
 
         class = DXInitObject.initialize()
         """
-        return self.DXclasses[self.type](self.id,**self.args)
-    def __getitem__(self,k):
+        return self.DXclasses[self.type](self.id, **self.args)
+
+    def __getitem__(self, k):
         return self.args[k]
-    def __setitem__(self,k,v):
+
+    def __setitem__(self, k, v):
         self.args[k] = v
+
     def __repr__(self):
-        return '<DXInitObject instance type='+str(self.type)+', id='+str(self.id)+'>'
+        return '<DXInitObject instance type=' + str(self.type) + ', id=' + str(self.id) + '>'
+
 
 class DXParser(object):
     """Brain-dead baroque implementation to read a simple (VMD) dx file.
@@ -428,7 +452,7 @@ class DXParser(object):
     """, re.VERBOSE)
 
 
-    def __init__(self,filename):
+    def __init__(self, filename):
         """Setup a parser for a simple DX file (from VMD)
 
         >>> DXfield_object = OpenDX.field(id)
@@ -442,18 +466,18 @@ class DXParser(object):
         Note that quotes are removed from quoted strings.
         """
         self.filename = filename
-        self.field = field('grid data',comments=['filename: '+self.filename])
+        self.field = field('grid data', comments=['filename: ' + self.filename])
         # other variables are initialised every time parse() is called
 
-        self.parsers = {'general':self.__general,
-                        'comment':self.__comment, 'object':self.__object,
-                        'gridpositions':self.__gridpositions,
-                        'gridconnections':self.__gridconnections,
-                        'array':self.__array, 'field':self.__field,
-                        }
+        self.parsers = {'general': self.__general,
+                        'comment': self.__comment, 'object': self.__object,
+                        'gridpositions': self.__gridpositions,
+                        'gridconnections': self.__gridconnections,
+                        'array': self.__array, 'field': self.__field,
+        }
 
-        
-    def parse(self,DXfield):
+
+    def parse(self, DXfield):
         """Parse the dx file and construct a DX field object with component classes.
 
         DXfield_object = OpenDX.field(*args)
@@ -471,12 +495,12 @@ class DXParser(object):
           not implemented yet.
         * Unknown tokens raise an exception.
         """
-    
+
         self.DXfield = DXfield              # OpenDX.field (used by comment parser)
         self.currentobject = None           # containers for data
         self.objects = []                   # |
         self.tokens = []                    # token buffer
-        with open(self.filename,'r') as self.dxfile:
+        with open(self.filename, 'r') as self.dxfile:
             self.use_parser('general')      # parse the whole file and populate self.objects
 
         # assemble field from objects
@@ -491,11 +515,10 @@ class DXParser(object):
                 DXfield.id = o.id
                 continue
             c = o.initialize()
-            self.DXfield.add(c.component,c)
+            self.DXfield.add(c.component, c)
 
         # free space
         del self.currentobject, self.objects
-        
 
 
     def __general(self):
@@ -510,9 +533,9 @@ class DXParser(object):
                 # (kludge in here as the last level-2 parser usually does not return
                 # via the object parser)
                 if self.currentobject and self.currentobject not in self.objects:
-                    self.objects.append(self.currentobject)                        
-                return                      # stop parsing and finish
-            # decision branches for all level-1 parsers:
+                    self.objects.append(self.currentobject)
+                return # stop parsing and finish
+                # decision branches for all level-1 parsers:
             # (the only way to get out of the lower level parsers!)
             if tok.iscode('COMMENT'):
                 self.set_parser('comment')  # switch the state
@@ -524,10 +547,10 @@ class DXParser(object):
                 # be only reached at the beginning or after comments;
                 # later we never formally switch back to __general
                 # (would create inifinite loop)
-                raise DXParseError('Unknown level-1 construct at '+str(tok))
-                
+                raise DXParseError('Unknown level-1 construct at ' + str(tok))
+
             self.apply_parser()     # hand over to new parser
-                                    # (possibly been set further down the hierarchy!)
+            # (possibly been set further down the hierarchy!)
 
     # Level-1 parser
     def __comment(self):
@@ -553,13 +576,13 @@ class DXParser(object):
         word = self.__consume().text
         if word != "class":
             raise DXParseError("reserved word %s should have been 'class'." % word)
-        # save previous DXInitObject
+            # save previous DXInitObject
         if self.currentobject:
             self.objects.append(self.currentobject)
-        # setup new DXInitObject
+            # setup new DXInitObject
         classtype = self.__consume().text
-        self.currentobject = DXInitObject(classtype=classtype,classid=classid)
-        
+        self.currentobject = DXInitObject(classtype=classtype, classid=classid)
+
         self.use_parser(classtype)
 
     # Level-2 parser (object parsers)
@@ -572,12 +595,12 @@ class DXParser(object):
         delta 1 0 0
         delta 0 1 0
         delta 0 0 1
-        """        
+        """
         try:
             tok = self.__consume()
         except DXParserNoTokens:
             return
-            
+
         if tok.equals('counts'):
             shape = []
             try:
@@ -592,8 +615,8 @@ class DXParser(object):
         elif tok.equals('origin'):
             origin = []
             try:
-                while (self.__peek().iscode('INTEGER') or 
-                       self.__peek().iscode('REAL')):
+                while (self.__peek().iscode('INTEGER') or
+                           self.__peek().iscode('REAL')):
                     tok = self.__consume()
                     origin.append(tok.value())
             except DXParserNoTokens:
@@ -605,8 +628,8 @@ class DXParser(object):
             d = []
             try:
                 while (self.__peek().iscode('INTEGER') or
-                       self.__peek().iscode('REAL')):
-                    tok = self.__consume()                        
+                           self.__peek().iscode('REAL')):
+                    tok = self.__consume()
                     d.append(tok.value())
             except DXParserNoTokens:
                 pass
@@ -617,8 +640,8 @@ class DXParser(object):
             except KeyError:
                 self.currentobject['delta'] = [d]
         else:
-            raise DXParseError('gridpositions: '+str(tok)+' not recognized.')
-            
+            raise DXParseError('gridpositions: ' + str(tok) + ' not recognized.')
+
 
     def __gridconnections(self):
         """Level-2 parser for gridconnections.
@@ -631,7 +654,7 @@ class DXParser(object):
             tok = self.__consume()
         except DXParserNoTokens:
             return
-            
+
         if tok.equals('counts'):
             shape = []
             try:
@@ -644,10 +667,10 @@ class DXParser(object):
                 raise DXParseError('gridconnections: no shape parameters')
             self.currentobject['shape'] = shape
         else:
-            raise DXParseError('gridconnections: '+str(tok)+' not recognized.')
+            raise DXParseError('gridconnections: ' + str(tok) + ' not recognized.')
 
 
-    def __array(self):        
+    def __array(self):
         """Level-2 parser for arrays.
 
         pattern:
@@ -662,33 +685,33 @@ class DXParser(object):
             tok = self.__consume()
         except DXParserNoTokens:
             return
-    
+
         if tok.equals('type'):
             tok = self.__consume()
             if not tok.iscode('STRING'):
-                raise DXParseError('array: type was "%s", not a string.'%\
+                raise DXParseError('array: type was "%s", not a string.' % \
                                    tok.text)
             self.currentobject['type'] = tok.value()
         elif tok.equals('rank'):
             tok = self.__consume()
             if not tok.iscode('INTEGER'):
-                raise DXParseError('array: rank was "%s", not an integer.'%\
+                raise DXParseError('array: rank was "%s", not an integer.' % \
                                    tok.text)
             self.currentobject['rank'] = tok.value()
         elif tok.equals('items'):
             tok = self.__consume()
             if not tok.iscode('INTEGER'):
-                raise DXParseError('array: items was "%s", not an integer.'%\
+                raise DXParseError('array: items was "%s", not an integer.' % \
                                    tok.text)
             self.currentobject['size'] = tok.value()
         elif tok.equals('data'):
             tok = self.__consume()
             if not tok.iscode('STRING'):
-                raise DXParseError('array: data was "%s", not a string.'%\
+                raise DXParseError('array: data was "%s", not a string.' % \
                                    tok.text)
             if tok.text != 'follows':
-                raise NotImplementedError(\
-                            'array: Only the "data follows header" format is supported.')
+                raise NotImplementedError( \
+                    'array: Only the "data follows header" format is supported.')
             if not self.currentobject['size']:
                 raise DXParseError("array: missing number of items")
             self.currentobject['array'] = [self.__consume().value('REAL') \
@@ -700,7 +723,7 @@ class DXParser(object):
                 raise DXParseError('array: "string" expected.')
             value = self.__consume().value()
         else:
-            raise DXParseError('array: '+str(tok)+' not recognized.')
+            raise DXParseError('array: ' + str(tok) + ' not recognized.')
 
     def __field(self):
         """Level-2 parser for a DX field object.
@@ -724,26 +747,28 @@ class DXParser(object):
             try:
                 self.currentobject['components'][component] = classid
             except KeyError:
-                self.currentobject['components'] = {component:classid}
+                self.currentobject['components'] = {component: classid}
         else:
-            raise DXParseError('field: '+str(tok)+' not recognized.')
+            raise DXParseError('field: ' + str(tok) + ' not recognized.')
 
     # parser routines independent of the dx classes
     # (with ideas from MDAnalysis.Selection and
     # http://effbot.org/zone/xml-scanner.htm)
 
-    def use_parser(self,parsername):
+    def use_parser(self, parsername):
         """Set parsername as the current parser and apply it."""
         self.__parser = self.parsers[parsername]
         self.__parser()
-    def set_parser(self,parsername):
+
+    def set_parser(self, parsername):
         """Set parsername as the current parser."""
         self.__parser = self.parsers[parsername]
+
     def apply_parser(self):
         """Apply the current parser to the token stream."""
         self.__parser()
 
-    def __tokenize(self,string):
+    def __tokenize(self, string):
         """Split s into tokens and update the token buffer.
 
         __tokenize(string)
@@ -754,10 +779,10 @@ class DXParser(object):
         for m in self.dx_regex.finditer(string.strip()):
             code = m.lastgroup
             text = m.group(m.lastgroup)
-            tok = Token(code,text)
+            tok = Token(code, text)
             if not tok.iscode('WHITESPACE'):
-                 self.tokens.append(tok)
-                 # print "DEBUG tokenize: "+str(tok)
+                self.tokens.append(tok)
+                # print "DEBUG tokenize: "+str(tok)
 
     def __refill_tokenbuffer(self):
         """Add a new tokenized line from the file to the token buffer.
@@ -780,7 +805,7 @@ class DXParser(object):
         except IndexError:
             raise DXParserNoTokens
 
-    def __consume(self,):
+    def __consume(self, ):
         """Get the next token from the buffer and remove it/them.
 
         try:
